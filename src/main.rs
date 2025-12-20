@@ -1,7 +1,7 @@
 mod graph;
 
 use std::env;
-use actix_web::{web, App, HttpRequest, HttpResponse, HttpServer, Responder};
+use actix_web::{middleware, web, App, HttpRequest, HttpResponse, HttpServer, Responder};
 use dotenv::dotenv;
 use serde::Serialize;
 use crate::graph::GraphBackend;
@@ -20,8 +20,15 @@ pub struct ErrorResponse {
 async fn main() -> std::io::Result<()> {
     dotenv().ok();
 
+    env_logger::Builder::from_default_env()
+        .filter_level(log::LevelFilter::Info)
+        .init();
+    log::info!("Starting mycelia-backend on http://localhost:8080");
+
     HttpServer::new(|| {
-        App::new().service(web::scope("/api").route("/test", web::get().to(manual_hello)))
+        App::new()
+            .wrap(middleware::Logger::default())
+            .service(web::scope("/api").route("/messages", web::get().to(get_messages)))
     })
     .bind(("0.0.0.0", 8080))?
     .run()
@@ -37,7 +44,7 @@ fn check_api_key(req: &HttpRequest) -> bool {
         .unwrap_or(false)
 }
 
-async fn manual_hello(req: HttpRequest) -> impl Responder {
+async fn get_messages(req: HttpRequest) -> impl Responder {
     if !check_api_key(&req) {
         return HttpResponse::Unauthorized().json(ErrorResponse {
             error: "Invalid or missing API key".to_string(),
@@ -50,10 +57,8 @@ async fn manual_hello(req: HttpRequest) -> impl Responder {
     let graph = GraphBackend::new(uri, user, pass).await;
 
     match graph.test().await {
-        Ok(text) => {
-            HttpResponse::Ok().json(ApiResponse {
-                message: text,
-            })
+        Ok(messages) => {
+            HttpResponse::Ok().json(messages)
         }
         Err(e) => {
             HttpResponse::NotFound().json(ErrorResponse {

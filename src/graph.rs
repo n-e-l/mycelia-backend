@@ -1,9 +1,16 @@
 use std::error::Error;
 use neo4rs::{query, Node};
 use neo4rs::Graph;
+use serde::Serialize;
 
 pub struct GraphBackend {
     graph: Graph,
+}
+
+#[derive(Serialize)]
+pub struct Message {
+    id: String,
+    text: String
 }
 
 impl GraphBackend {
@@ -12,17 +19,21 @@ impl GraphBackend {
         Self { graph }
     }
 
-    pub(crate) async fn test(self) -> Result<String, Box<dyn Error>> {
+    pub(crate) async fn test(self) -> Result<Vec<Message>, Box<dyn Error>> {
         let mut result = self.graph.execute(
-            query("MATCH (n:Concept) RETURN n")
+            query("MATCH (n:Message) RETURN n")
         ).await.unwrap();
 
-        let mut output: String = "".to_string();
+        let mut messages: Vec<Message> = vec![];
         while let Some(row) = result.next().await.unwrap() {
             let node: Node = row.get("n")?;
-            let text: String = node.get("name")?;
-            output  = output + "\n" + &text;
+            let id: String = node.get("id")?;
+            let text: String = node.get("text")?;
+            messages.push( Message {
+                id,
+                text
+            });
         }
-        return Ok(output);
+        return Ok(messages);
     }
 }
