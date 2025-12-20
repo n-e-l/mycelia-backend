@@ -1,6 +1,5 @@
 use std::error::Error;
-use std::io;
-use neo4rs::{query, Node, Txn};
+use neo4rs::{query, Node};
 use neo4rs::Graph;
 
 pub struct GraphBackend {
