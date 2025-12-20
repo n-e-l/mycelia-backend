@@ -1,9 +1,4 @@
-# Stitch
+# Mycelia backend
 
-SVG stitch pattern tool.
+Backend web api for my mycelia note-taking software.
 
-## What components could it have?
-
-- A graphical interface to create stitch and plotter art.
-- Utilities to export as an SVG.
-- Utilities to transmit SVG data to a plotter. 
