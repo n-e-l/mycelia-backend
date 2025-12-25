@@ -1,6 +1,7 @@
 mod graph;
 
 use std::env;
+use actix_cors::Cors;
 use actix_web::{middleware, web, App, HttpRequest, HttpResponse, HttpServer, Responder};
 use dotenv::dotenv;
 use serde::Serialize;
@@ -26,7 +27,14 @@ async fn main() -> std::io::Result<()> {
     log::info!("Starting mycelia-backend on http://localhost:8080");
 
     HttpServer::new(|| {
+        let cors = Cors::default()
+            .allowed_origin("https://n-e-l.github.io")
+            .allowed_origin("http://localhost:8080") // for local development
+            .allowed_methods(vec!["GET", "POST", "PUT", "DELETE", "OPTIONS"])
+            .allowed_headers(vec!["Content-Type", "Authorization"]);
+
         App::new()
+            .wrap(cors)
             .wrap(middleware::Logger::default())
             .service(web::scope("/api").route("/messages", web::get().to(get_messages)))
     })
