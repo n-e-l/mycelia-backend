@@ -27,11 +27,14 @@ async fn main() -> std::io::Result<()> {
     log::info!("Starting mycelia-backend on http://localhost:8080");
 
     HttpServer::new(|| {
-        let cors = Cors::default()
-            .allowed_origin("https://n-e-l.github.io")
+        let mut cors = Cors::default()
             .allowed_origin("http://localhost:8080") // for local development
             .allowed_methods(vec!["GET", "POST", "PUT", "DELETE", "OPTIONS"])
             .allowed_headers(vec!["Content-Type", "Authorization"]);
+
+        if let Some(cors_origin) = env::var("CORS_ORIGIN").ok() {
+            cors = cors.allowed_origin(cors_origin.as_str());
+        }
 
         App::new()
             .wrap(cors)
