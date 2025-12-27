@@ -1,6 +1,7 @@
 mod graph;
 
 use std::env;
+use std::sync::{Arc, Mutex};
 use actix_cors::Cors;
 use actix_web::{middleware, web, App, HttpRequest, HttpResponse, HttpServer, Responder};
 use dotenv::dotenv;
@@ -17,6 +18,10 @@ pub struct ErrorResponse {
     error: String,
 }
 
+struct AppState {
+    graph: Mutex<GraphBackend>
+}
+
 #[actix_web::main]
 async fn main() -> std::io::Result<()> {
     dotenv().ok();
@@ -26,7 +31,17 @@ async fn main() -> std::io::Result<()> {
         .init();
     log::info!("Starting mycelia-backend on http://localhost:8080");
 
-    HttpServer::new(|| {
+    // Connect to the neo4j backend
+    let uri = env::var("NEO4J_URI").expect("NEO4J_URI was not set");
+    let user = env::var("NEO4J_USER").expect("NEO4J_USER was not set");
+    let pass = env::var("NEO4J_PASS").expect("NEO4J_PASS was not set");
+    let graph = GraphBackend::new(uri, user, pass).await;
+
+    let app_data = web::Data::new(AppState {
+        graph: Mutex::new(graph)
+    });
+
+    HttpServer::new(move || {
         let mut cors = Cors::default()
             .allowed_origin("http://localhost:8080") // for local development
             .allowed_methods(vec!["GET", "POST", "PUT", "DELETE", "OPTIONS"])
@@ -37,6 +52,7 @@ async fn main() -> std::io::Result<()> {
         }
 
         App::new()
+            .app_data(app_data.clone())
             .wrap(cors)
             .wrap(middleware::Logger::default())
             .service(web::scope("/api").route("/messages", web::get().to(get_messages)))
@@ -55,18 +71,14 @@ fn check_api_key(req: &HttpRequest) -> bool {
         .unwrap_or(false)
 }
 
-async fn get_messages(req: HttpRequest) -> impl Responder {
+async fn get_messages(req: HttpRequest, data: web::Data<AppState>) -> impl Responder {
     if !check_api_key(&req) {
         return HttpResponse::Unauthorized().json(ErrorResponse {
             error: "Invalid or missing API key".to_string(),
         });
     }
 
-    let uri = env::var("NEO4J_URI").expect("NEO4J_URI was not set");
-    let user = env::var("NEO4J_USER").expect("NEO4J_USER was not set");
-    let pass = env::var("NEO4J_PASS").expect("NEO4J_PASS was not set");
-    let graph = GraphBackend::new(uri, user, pass).await;
-
+    let graph = data.graph.lock().expect("Failed to get mutex");
     match graph.test().await {
         Ok(messages) => {
             HttpResponse::Ok().json(messages)

@@ -19,7 +19,7 @@ impl GraphBackend {
         Self { graph }
     }
 
-    pub(crate) async fn test(self) -> Result<Vec<Message>, Box<dyn Error>> {
+    pub(crate) async fn test(&self) -> Result<Vec<Message>, Box<dyn Error>> {
         let mut result = self.graph.execute(
             query("MATCH (n:Message) RETURN n")
         ).await.unwrap();
