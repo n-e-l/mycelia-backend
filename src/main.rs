@@ -46,7 +46,7 @@ async fn main() -> std::io::Result<()> {
     HttpServer::new(move || {
         let mut cors = Cors::default()
             .allowed_origin("http://localhost:8080") // for local development
-            .allowed_methods(vec!["GET", "POST", "PUT", "DELETE", "OPTIONS"])
+            .allowed_methods(vec!["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"])
             .allowed_headers(vec!["Content-Type", "Authorization"]);
 
         if let Some(cors_origin) = env::var("CORS_ORIGIN").ok() {
