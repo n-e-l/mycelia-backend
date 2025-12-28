@@ -3,9 +3,10 @@ mod graph;
 use std::env;
 use std::sync::{Mutex};
 use actix_cors::Cors;
-use actix_web::{get, middleware, post, web, App, HttpRequest, HttpResponse, HttpServer, Responder};
+use actix_web::{get, middleware, patch, post, put, web, App, HttpRequest, HttpResponse, HttpServer, Responder};
+use actix_web::web::patch;
 use dotenv::dotenv;
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 use crate::graph::GraphBackend;
 
 #[derive(Serialize)]
@@ -58,7 +59,8 @@ async fn main() -> std::io::Result<()> {
             .wrap(middleware::Logger::default())
             .service(
                 web::scope("/api")
-                     .service(get_messages)
+                    .service(get_messages)
+                    .service(patch_field)
             )
     })
     .bind(("0.0.0.0", 8080))?
@@ -94,5 +96,36 @@ async fn get_messages(req: HttpRequest, data: web::Data<AppState>) -> impl Respo
             })
         }
     }
+}
 
+#[derive(Deserialize, Serialize)]
+struct FieldData {
+    text: Option<String>
+}
+
+#[patch("/entry/{id}")]
+async fn patch_field(id: web::Path<String>, body: web::Json<FieldData>, req: HttpRequest, data: web::Data<AppState>) -> impl Responder {
+    if !check_api_key(&req) {
+        return HttpResponse::Unauthorized().json(ErrorResponse {
+            error: "Invalid or missing API key".to_string(),
+        });
+    }
+
+    if let Some(text) = &body.text {
+        let graph = data.graph.lock().expect("Failed to get mutex");
+        match graph.update_text(id.as_str(), text).await {
+            Ok(messages) => {
+                return HttpResponse::Ok().json(messages);
+            }
+            Err(e) => {
+                return HttpResponse::NotFound().json(ErrorResponse {
+                    error: e.to_string(),
+                });
+            }
+        }
+    }
+
+    HttpResponse::BadRequest().json(ErrorResponse {
+        error: "Expected a 'text' field".to_string(),
+    })
 }
