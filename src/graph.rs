@@ -19,13 +19,13 @@ impl GraphBackend {
         Self { graph }
     }
 
-    pub(crate) async fn test(&self) -> Result<Vec<Message>, Box<dyn Error>> {
+    pub(crate) async fn get_messages(&self) -> Result<Vec<Message>, Box<dyn Error>> {
         let mut result = self.graph.execute(
             query("MATCH (n:Message) RETURN n")
-        ).await.unwrap();
+        ).await?;
 
         let mut messages: Vec<Message> = vec![];
-        while let Some(row) = result.next().await.unwrap() {
+        while let Some(row) = result.next().await? {
             let node: Node = row.get("n")?;
             let id: String = node.get("id")?;
             let text: String = node.get("text")?;
@@ -34,6 +34,6 @@ impl GraphBackend {
                 text
             });
         }
-        return Ok(messages);
+        Ok(messages)
     }
 }

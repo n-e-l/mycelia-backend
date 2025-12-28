@@ -1,7 +1,7 @@
 mod graph;
 
 use std::env;
-use std::sync::{Arc, Mutex};
+use std::sync::{Mutex};
 use actix_cors::Cors;
 use actix_web::{middleware, web, App, HttpRequest, HttpResponse, HttpServer, Responder};
 use dotenv::dotenv;
@@ -37,6 +37,7 @@ async fn main() -> std::io::Result<()> {
     let pass = env::var("NEO4J_PASS").expect("NEO4J_PASS was not set");
     let graph = GraphBackend::new(uri, user, pass).await;
 
+    // Shared app state
     let app_data = web::Data::new(AppState {
         graph: Mutex::new(graph)
     });
@@ -79,7 +80,7 @@ async fn get_messages(req: HttpRequest, data: web::Data<AppState>) -> impl Respo
     }
 
     let graph = data.graph.lock().expect("Failed to get mutex");
-    match graph.test().await {
+    match graph.get_messages().await {
         Ok(messages) => {
             HttpResponse::Ok().json(messages)
         }

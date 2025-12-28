@@ -6,7 +6,7 @@ edition = "2021"
 [dependencies]
 dotenv = "0.15.0"
 actix-web = "4"
-neo4rs = "0.9.0-rc.9"
+neo4rs = { version = "0.9.0-rc.9", features = ["json", "serde_json"] }
 serde = { version = "1.0.228", features = ["derive"] }
 env_logger = "0.11.8"
 log = "0.4.29"
