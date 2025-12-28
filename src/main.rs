@@ -3,7 +3,7 @@ mod graph;
 use std::env;
 use std::sync::{Mutex};
 use actix_cors::Cors;
-use actix_web::{middleware, web, App, HttpRequest, HttpResponse, HttpServer, Responder};
+use actix_web::{get, middleware, post, web, App, HttpRequest, HttpResponse, HttpServer, Responder};
 use dotenv::dotenv;
 use serde::Serialize;
 use crate::graph::GraphBackend;
@@ -56,7 +56,10 @@ async fn main() -> std::io::Result<()> {
             .app_data(app_data.clone())
             .wrap(cors)
             .wrap(middleware::Logger::default())
-            .service(web::scope("/api").route("/messages", web::get().to(get_messages)))
+            .service(
+                web::scope("/api")
+                     .service(get_messages)
+            )
     })
     .bind(("0.0.0.0", 8080))?
     .run()
@@ -72,6 +75,7 @@ fn check_api_key(req: &HttpRequest) -> bool {
         .unwrap_or(false)
 }
 
+#[get("/messages")]
 async fn get_messages(req: HttpRequest, data: web::Data<AppState>) -> impl Responder {
     if !check_api_key(&req) {
         return HttpResponse::Unauthorized().json(ErrorResponse {
