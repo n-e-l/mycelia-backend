@@ -3,7 +3,7 @@ mod graph;
 use std::env;
 use std::sync::{Mutex};
 use actix_cors::Cors;
-use actix_web::{get, middleware, patch, web, App, HttpRequest, HttpResponse, HttpServer, Responder};
+use actix_web::{get, middleware, patch, post, web, App, HttpRequest, HttpResponse, HttpServer, Responder};
 use dotenv::dotenv;
 use serde::{Deserialize, Serialize};
 use crate::graph::GraphBackend;
@@ -113,6 +113,33 @@ async fn patch_field(id: web::Path<String>, body: web::Json<FieldData>, req: Htt
     if let Some(text) = &body.text {
         let graph = data.graph.lock().expect("Failed to get mutex");
         match graph.update_text(id.as_str(), text).await {
+            Ok(messages) => {
+                return HttpResponse::Ok().json(messages);
+            }
+            Err(e) => {
+                return HttpResponse::NotFound().json(ErrorResponse {
+                    error: e.to_string(),
+                });
+            }
+        }
+    }
+
+    HttpResponse::BadRequest().json(ErrorResponse {
+        error: "Expected a 'text' field".to_string(),
+    })
+}
+
+#[post("/entry")]
+async fn post_entry(body: web::Json<FieldData>, req: HttpRequest, data: web::Data<AppState>) -> impl Responder {
+    if !check_api_key(&req) {
+        return HttpResponse::Unauthorized().json(ErrorResponse {
+            error: "Invalid or missing API key".to_string(),
+        });
+    }
+
+    if let Some(text) = &body.text {
+        let graph = data.graph.lock().expect("Failed to get mutex");
+        match graph.create_message(text).await {
             Ok(messages) => {
                 return HttpResponse::Ok().json(messages);
             }
