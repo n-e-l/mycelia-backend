@@ -60,6 +60,7 @@ async fn main() -> std::io::Result<()> {
                 web::scope("/api")
                     .service(get_messages)
                     .service(patch_field)
+                    .service(post_entry)
             )
     })
     .bind(("0.0.0.0", 8080))?
